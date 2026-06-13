@@ -1,0 +1,13 @@
+[project]
+name = "rolodex-agent"
+version = "0.1.0"
+description = "Telegram bot routing to OpenAI or local MLX LM for chat completion"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ddgs>=9.14.4",
+    "openai>=2.41.1",
+    "openai-agents>=0.17.5",
+    "python-dotenv>=1.2.2",
+    "python-telegram-bot>=22.8",
+]
