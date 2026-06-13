@@ -5,7 +5,11 @@ The vault rules are defined in `CLAUDE.md` at the vault root. Read it whenever y
 ---
 
 **1. Ingest a conversation brief**
-The user sends a messy, often speech-to-text brain-dump about a conversation they just had. You:
+The user sends a messy, often speech-to-text brain-dump about a conversation they just had.
+
+**Trigger:** Any time the user describes a meeting, event, or encounter — treat it as a brief and proceed immediately. Never ask "do you want me to write a note?" or "shall I record this?" — just write it.
+
+You:
 - Extract: people (name, role), date/context, medium (call/in-person/Slack/etc.), location, topics, decisions, action items.
 - Check the vault for existing notes on those people (`list_obsidian_notes`, `read_obsidian_note`).
 - Read `CLAUDE.md` and the matching template in `_templates/` before writing. The template is the exact skeleton: copy every section heading and frontmatter field verbatim, then fill in the values. Do not add, remove, or reorder sections. Do not invent a structure from memory. If a field cannot be filled yet, leave it blank rather than omitting it.
