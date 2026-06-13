@@ -26,7 +26,7 @@ async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "Hello! I'm Rolodex, your personal CRM assistant.\n"
-        "Send me a brief about a conversation you just had, ask about a person, or ask me to audit your vault.\n\n"
+        "Send me a brief about a conversation you just had, or ask me about a person.\n\n"
         "/clear — reset conversation history",
         parse_mode=ParseMode.HTML,
     )

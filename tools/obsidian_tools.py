@@ -1,5 +1,4 @@
 from pathlib import Path
-from collections import defaultdict
 import re
 from agents import function_tool
 import config
@@ -7,24 +6,20 @@ import config
 _PEOPLE_DIR = "People"
 _CONVERSATIONS_DIR = "Conversations"
 
-_SCHEMAS: dict[str, dict] = {
-    _PEOPLE_DIR: {
-        "frontmatter": ["tags", "met_via"],
-        "sections": ["Quick facts", "About", "Recurring themes"],
-    },
-    _CONVERSATIONS_DIR: {
-        "frontmatter": ["date", "people", "medium", "location"],
-        "sections": ["Summary", "Topics", "Decisions", "Action items"],
-    },
+_TEMPLATE_MAP = {
+    _PEOPLE_DIR: "_templates/Person.md",
+    _CONVERSATIONS_DIR: "_templates/Conversation.md",
 }
 
 _FRONTMATTER_BLOCK_RE = re.compile(r"^---\r?\n(.*?)\r?\n---", re.DOTALL)
 _KV_RE = re.compile(r"^([\w_]+):\s*(.*)", re.MULTILINE)
 _BLANK_VALUES = {"", "null", "~", "[]", "{}"}
-_DATE_PREFIX_RE = re.compile(r"^\d{4}-\d{2}-\d{2} .+")
-_WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]")
-_SKIP_DIRS = {"_templates", ".obsidian"}
-_SKIP_FILES = {"CLAUDE.md"}
+_PLACEHOLDER_LINE_RE = re.compile(r"^\[.*\]$")
+
+_BULLET_SECTIONS: dict[str, set[str]] = {
+    _PEOPLE_DIR: {"Quick facts", "Recurring themes", "Conversations", "Follow-up"},
+    _CONVERSATIONS_DIR: {"What we talked about", "What I want to remember", "Follow-up"},
+}
 
 
 def _vault() -> Path:
@@ -43,9 +38,51 @@ def _parse_frontmatter(content: str) -> dict[str, str]:
     return dict(_KV_RE.findall(m.group(1)))
 
 
+def _parse_sections(content: str) -> dict[str, str]:
+    sections: dict[str, str] = {}
+    current: str | None = None
+    body: list[str] = []
+    for line in content.splitlines():
+        m = re.match(r"^##\s+(.+)$", line)
+        if m:
+            if current is not None:
+                sections[current] = "\n".join(body).strip()
+            current = m.group(1).strip()
+            body = []
+        elif current is not None:
+            body.append(line)
+    if current is not None:
+        sections[current] = "\n".join(body).strip()
+    return sections
+
+
+def _has_bullet_content(body: str) -> bool:
+    real_lines = [
+        l for l in body.splitlines()
+        if l.strip() and not _PLACEHOLDER_LINE_RE.match(l.strip())
+    ]
+    if not real_lines:
+        return True  # empty or placeholder-only — nothing to enforce
+    return any(l.strip().startswith("- ") for l in real_lines)
+
+
+def _schema_from_template(top_dir: str) -> dict:
+    """Read the vault template for top_dir and return expected frontmatter keys + sections."""
+    template_path = _TEMPLATE_MAP.get(top_dir)
+    if not template_path:
+        return {"frontmatter": [], "sections": []}
+    full_path = _vault() / template_path
+    if not full_path.exists():
+        return {"frontmatter": [], "sections": []}
+    content = full_path.read_text(encoding="utf-8")
+    keys = list(_parse_frontmatter(content).keys())
+    sections = re.findall(r"^##\s+(.+)$", content, re.MULTILINE)
+    return {"frontmatter": keys, "sections": sections}
+
+
 def _validate(top_dir: str, content: str) -> list[str]:
-    schema = _SCHEMAS.get(top_dir)
-    if not schema:
+    schema = _schema_from_template(top_dir)
+    if not schema["frontmatter"] and not schema["sections"]:
         return []
     warnings: list[str] = []
     fm = _parse_frontmatter(content)
@@ -59,6 +96,10 @@ def _validate(top_dir: str, content: str) -> list[str]:
     for section in schema["sections"]:
         if section not in present_sections:
             warnings.append(f"missing section: {section}")
+    sections_content = _parse_sections(content)
+    for section in _BULLET_SECTIONS.get(top_dir, set()):
+        if not _has_bullet_content(sections_content.get(section, "")):
+            warnings.append(f"section '{section}' must use bullet points (- ), found prose")
     return warnings
 
 
@@ -67,10 +108,16 @@ def _write(path: str, content: str, top_dir: str) -> str:
     full_path.parent.mkdir(parents=True, exist_ok=True)
     full_path.write_text(content, encoding="utf-8")
     warnings = _validate(top_dir, content)
-    result = f"Written: {path}"
-    if warnings:
-        result += "\n⚠ " + "\n⚠ ".join(warnings)
-    return result
+    if not warnings:
+        return f"Written: {path}"
+    issues = "\n".join(f"  - {w}" for w in warnings)
+    template = _TEMPLATE_MAP.get(top_dir, "unknown template")
+    return (
+        f"Written: {path} — SCHEMA ERRORS, note is incomplete.\n"
+        f"You MUST fix all of the following before replying to the user:\n{issues}\n"
+        f"Required action: call read_obsidian_note(\"{template}\") to re-check the expected "
+        f"structure, correct the note content, and call the write tool again."
+    )
 
 
 @function_tool
@@ -120,74 +167,3 @@ def write_conversation_note(date: str, person_name: str, context: str, content: 
     return _write(path, content, _CONVERSATIONS_DIR)
 
 
-@function_tool
-def audit_vault() -> str:
-    """Scan the vault for structural issues: wrong file locations, naming convention
-    violations, broken [[wikilinks]], and missing frontmatter/sections.
-    Returns a grouped report ready to share with the user."""
-    root = _vault()
-    all_notes = [
-        p for p in root.rglob("*.md")
-        if not any(part in _SKIP_DIRS for part in p.parts)
-        and p.name not in _SKIP_FILES
-    ]
-
-    # Build stem index for wikilink resolution (Obsidian matches by filename stem)
-    stem_index: dict[str, list[str]] = defaultdict(list)
-    for note in all_notes:
-        stem_index[note.stem.lower()].append(str(note.relative_to(root)))
-
-    issues: dict[str, list[str]] = {
-        "wrong location": [],
-        "naming convention": [],
-        "broken wikilinks": [],
-        "formatting": [],
-    }
-
-    known_dirs = {_PEOPLE_DIR, _CONVERSATIONS_DIR}
-
-    for note in sorted(all_notes):
-        rel = str(note.relative_to(root))
-        depth = len(note.relative_to(root).parts)
-        top_dir = note.relative_to(root).parts[0] if depth > 1 else ""
-        content = note.read_text(encoding="utf-8")
-
-        # Location
-        if depth == 1:
-            issues["wrong location"].append(f"{rel} — stray note at vault root")
-        elif top_dir not in known_dirs:
-            issues["wrong location"].append(f"{rel} — unexpected directory '{top_dir}'")
-
-        # Naming convention
-        if top_dir == _CONVERSATIONS_DIR and not _DATE_PREFIX_RE.match(note.name):
-            issues["naming convention"].append(
-                f"{rel} — conversation filename must start with YYYY-MM-DD"
-            )
-
-        # Broken wikilinks
-        for raw_link in _WIKILINK_RE.findall(content):
-            target = raw_link.strip()
-            if "/" in target:
-                # Explicit path — check exact file
-                if not (root / f"{target}.md").exists():
-                    issues["broken wikilinks"].append(f"{rel} → [[{target}]]")
-            else:
-                if target.lower() not in stem_index:
-                    issues["broken wikilinks"].append(f"{rel} → [[{target}]]")
-
-        # Formatting (frontmatter + sections)
-        for warning in _validate(top_dir, content):
-            issues["formatting"].append(f"{rel} — {warning}")
-
-    total = sum(len(v) for v in issues.values())
-    if total == 0:
-        return f"Audit passed — no issues found across {len(all_notes)} notes."
-
-    lines: list[str] = []
-    for category, items in issues.items():
-        if items:
-            lines.append(f"**{category}** ({len(items)})")
-            lines.extend(f"  - {item}" for item in items)
-            lines.append("")
-    lines.append(f"Total: {total} issue(s) across {len(all_notes)} notes.")
-    return "\n".join(lines)
