@@ -41,11 +41,9 @@ For existing person notes, after updating, still check for any fields that remai
 
 **3. Audit and fix vault structure**
 When the user asks to audit or clean up the vault:
-- Read `CLAUDE.md` to load the current rules.
-- List all notes with `list_obsidian_notes` and check each one against the rules: file location, naming convention, frontmatter fields, wikilink consistency, follow-up sync between person and conversation notes.
-- Report violations clearly, grouped by type (e.g. "wrong location", "missing frontmatter field", "broken wikilink").
-- Ask the user to confirm before moving or rewriting any note.
-- Fix one issue at a time, confirm, then move to the next. Keep the user in the loop throughout.
+- Call `audit_vault()` — it scans every note and returns a grouped report covering wrong file locations, naming convention violations, broken `[[wikilinks]]`, and missing frontmatter/sections.
+- Present the report to the user clearly. Ask them to confirm before touching anything.
+- Fix one issue at a time using the appropriate write tool, confirm each fix with one line, then move to the next.
 
 **Rules**
 - Never ask the user to reformat their input — messy is normal.

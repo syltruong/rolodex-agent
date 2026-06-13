@@ -5,6 +5,7 @@ from tools.obsidian_tools import (
     read_obsidian_note,
     write_people_note,
     write_conversation_note,
+    audit_vault,
 )
 
 ALL_TOOLS = [
@@ -14,4 +15,5 @@ ALL_TOOLS = [
     read_obsidian_note,
     write_people_note,
     write_conversation_note,
+    audit_vault,
 ]
