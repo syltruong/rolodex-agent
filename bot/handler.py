@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from telegram import Update
 from telegram.constants import ParseMode
@@ -7,6 +8,19 @@ from agent import ConversationManager
 from bot.formatting import md_to_html
 
 logger = logging.getLogger("rolodex.bot")
+
+
+async def _send_with_retry(coro, retries: int = 3) -> None:
+    for attempt in range(retries):
+        try:
+            await coro
+            return
+        except (NetworkError, TimedOut) as e:
+            if attempt == retries - 1:
+                raise
+            wait = 2 ** attempt
+            logger.warning("Send failed (%s), retrying in %ds…", e, wait)
+            await asyncio.sleep(wait)
 
 
 def setup_handlers(app: Application, conversations: ConversationManager) -> None:
@@ -26,7 +40,7 @@ async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "Hello! I'm Rolodex, your personal CRM assistant.\n"
-        "Send me a brief about a conversation you just had, ask about a person, or ask me to audit your vault.\n\n"
+        "Send me a brief about a conversation you just had, or ask me about a person.\n\n"
         "/clear — reset conversation history",
         parse_mode=ParseMode.HTML,
     )
@@ -47,5 +61,7 @@ def _make_chat(conversations: ConversationManager):
         except (NetworkError, TimedOut):
             pass  # cosmetic — don't abort the real work
         response = await conversations.respond(chat_id, update.message.text)
-        await update.message.reply_text(md_to_html(response), parse_mode=ParseMode.HTML)
+        await _send_with_retry(
+            update.message.reply_text(md_to_html(response), parse_mode=ParseMode.HTML)
+        )
     return _chat
