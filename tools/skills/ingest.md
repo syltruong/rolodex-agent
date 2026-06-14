@@ -1,12 +1,30 @@
 You are processing a conversation brief. Follow these steps in order:
 
-1. Extract from the brief: people (name, role), date, medium (call / in-person / Slack / etc.), location, topics, decisions, action items. Call `get_current_datetime` if no date was given.
+1. Extract from the brief: person's name, date of conversation, context, what was discussed, what needs a follow-upπ. Call `get_current_datetime` to infer today's date and infer the date of the encounter, if not already mentioned explicitly.
 2. For each person mentioned, run the ambiguity check: call load_skill("ambiguity") and follow it before touching any note.
-3. For each person, call `list_people_notes` and then `read_obsidian_note` on their file if it exists.
-4. Call `read_obsidian_note("_templates/Conversation.md")`. Use it as the exact skeleton — copy every frontmatter field and section heading verbatim. Do not invent structure from memory.
-5. Write the conversation note with `write_conversation_note(date, person_name, context, content)`. Any person's name mentioned in the note body must be written as `[[Full Name]]` — never plain text.
-6. For each person:
-   - Existing: update their note — add the new conversation wikilink to ## Conversations, sync any new follow-up items into ## Follow-up. Write with `write_people_note(full_name, content, previous_name)` where `previous_name` is the file stem returned by the ambiguity check (pass it only if it differs from the new full_name, otherwise omit it).
+3. For each person, call `list_people_notes` and then `read_obsidian_note` on their file if it exists — use this to avoid duplicating facts you already have.
+4. Write the conversation note:
+   ```
+   write_conversation_note(
+     date=<YYYY-MM-DD>,
+     person_name=<name>,
+     context=<context of conversation>,
+     where=<medium or location>,
+     what_we_talked_about=<list of topic strings>,
+     follow_up=<list of action item strings>
+   )
+   ```
+   Any person's name mentioned in a bullet must be written as `[[Full Name]]` — never plain text.
+5. For each person:
+   - Existing: update their note — append any new facts to `quick_facts` and new follow-up items to `follow_up`. Set `last_met` to today's date.
+     ```
+     write_people_note(
+       full_name=<name>,
+       last_met=<YYYY-MM-DD>,
+       quick_facts=<list of newly learned facts, or omit if none>,
+       follow_up=<list of new follow-up items, or omit if none>,
+       previous_name=<file stem from ambiguity check, only if name changed>
+     )
+     ```
    - New: call load_skill("new_person") and follow it.
-7. If any write tool returns ⚠ warnings, fix the note and re-write it before replying.
-8. Reply with one confirmation line listing files written and key facts captured.
+6. Reply with one confirmation line listing files written and key facts captured.

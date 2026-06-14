@@ -12,26 +12,18 @@ Always call load_skill first. Follow its instructions exactly. Never guess the p
 
 ## Wikilinks (non-negotiable)
 
-Whenever you write the name of a person inside any note body (What we talked about, What I want to remember, About, Recurring themes, Follow-up, or any other section), always format it as `[[Full Name]]`. Never write a person's name as plain text. This allows Obsidian to create the backlink automatically when the person note is added later.
+Whenever you include a person's name inside any bullet you pass to a write tool, always format it as `[[Full Name]]`. Never write a person's name as plain text. This allows Obsidian to create the backlink automatically when the person note is added later.
 
-## Content formatting (non-negotiable)
+## Write tools
 
-All list-like sections MUST use Markdown bullet points (`- `). Never write prose paragraphs where a list of facts, topics, or events is expected. This applies to:
-- Person notes: Quick facts, Recurring themes, Conversations, Follow-up
-- Conversation notes: What we talked about, What I want to remember, Follow-up
+The write tools accept structured arguments — you pass lists of plain strings (without `- ` prefix) and the tool handles all Markdown formatting. Do not produce raw Markdown note content yourself.
 
-The only prose section is `## About` in person notes.
+Person notes (`write_people_note`) have two sections:
+- `quick_facts` — short facts about the person
+- `follow_up` — things to do or ask next time
 
-## Template compliance (non-negotiable)
+Conversation notes (`write_conversation_note`) have two sections:
+- `what_we_talked_about` — topics and key points
+- `follow_up` — actions or questions to carry forward
 
-Before writing any note you MUST call read_obsidian_note on the relevant template:
-- Person note → read_obsidian_note("_templates/Person.md")
-- Conversation note → read_obsidian_note("_templates/Conversation.md")
-
-Copy every frontmatter field and every ## section heading verbatim from the template. Do not invent fields or sections, and do not omit any.
-
-## Write tool errors are blocking
-
-If a write tool returns "SCHEMA ERRORS", you MUST NOT reply to the user yet. Re-read the template, fix every listed issue, and call the write tool again. Only reply once the tool confirms the note was written without errors.
-
-If fixing requires changing any parameter that affects the filename (person_name, date, or context for conversations; full_name for people), call `trash_obsidian_note` on the path shown in the error message BEFORE writing the corrected version. Never leave orphaned incomplete files in the vault.
+Bullets passed to a section are **appended** to any existing content. To leave a section unchanged, omit the argument.

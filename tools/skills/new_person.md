@@ -1,17 +1,22 @@
 You are creating a new person note. Follow these steps:
 
-1. Call `read_obsidian_note("_templates/Person.md")`. This is the exact skeleton — copy every frontmatter field and section heading verbatim.
-2. Fill in every field you can from the brief and conversation context. Any person's name mentioned in the note body must be written as `[[Full Name]]` — never plain text.
-   - `name`: full name
-   - `type`: always "person"
-   - `tags`: infer from context (work, friend, investor, family, colleague, founder…). Do not ask the user.
+1. Fill in what you can from the brief and conversation context. Any person's name mentioned in a bullet must be written as `[[Full Name]]` — never plain text.
+   - `full_name`: full name
+   - `met_via`: how you know them / who introduced them (leave blank if unknown)
    - `last_met`: use the date of the current conversation
-   - `met_via`: fill if known, otherwise leave blank for follow-up
-3. Write the note with `write_people_note(full_name, content)`.
-4. After writing, identify every frontmatter field and section that is still blank. Ask the user about all of them in one conversational message — not a formal list, just natural questions:
-   - `met_via` → how they met / who introduced them
-   - `## Quick facts: Location` → where they're based
-   - `## Quick facts: Works at` → role and company
-   - `## About` → background, personality, anything worth remembering
-   - `## Recurring themes` → topics that keep coming up with this person
-5. Once the user replies, update the note with `write_people_note` and confirm with one line.
+   - `quick_facts`: a list of short fact strings — role, company, location, anything concrete from the brief
+   - `follow_up`: a list of action items or open questions from the brief
+2. Write the note:
+   ```
+   write_people_note(
+     full_name=<name>,
+     met_via=<how you met, or "">,
+     last_met=<YYYY-MM-DD>,
+     quick_facts=<list of fact strings>,
+     follow_up=<list of follow-up strings>
+   )
+   ```
+3. After writing, identify what is still unknown. Ask the user about gaps in one natural conversational message — not a formal list:
+   - `met_via` → how they met / who introduced them (if blank)
+   - quick facts → where they're based, what they do (if not in brief)
+4. Once the user replies, call `write_people_note` again with any new information and confirm with one line.

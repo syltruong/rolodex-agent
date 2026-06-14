@@ -20,12 +20,8 @@ LOCAL_MODEL: str = os.getenv("LOCAL_MODEL", "local-model")
 LOCAL_API_KEY: str = os.getenv("LOCAL_API_KEY", "not-needed")
 
 def _load_system_prompt() -> str:
-    if env_val := os.getenv("SYSTEM_PROMPT"):
-        return env_val
     default_file = Path(__file__).parent / "system_prompt.md"
-    if default_file.exists():
-        return default_file.read_text(encoding="utf-8")
-    return "You are a helpful personal assistant."
+    return default_file.read_text(encoding="utf-8")
 
 SYSTEM_PROMPT: str = _load_system_prompt()
 

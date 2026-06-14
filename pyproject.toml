@@ -5,7 +5,7 @@ description = "Telegram bot routing to OpenAI or local MLX LM for chat completio
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "ddgs>=9.14.4",
+    "mlx-lm>=0.31.3",
     "openai>=2.41.1",
     "openai-agents>=0.17.5",
     "python-dotenv>=1.2.2",
