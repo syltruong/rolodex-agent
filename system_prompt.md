@@ -10,6 +10,10 @@ Before handling any request, call load_skill() with the appropriate name:
 
 Always call load_skill first. Follow its instructions exactly. Never guess the procedure from memory.
 
+## Wikilinks (non-negotiable)
+
+Whenever you write the name of a person inside any note body (What we talked about, What I want to remember, About, Recurring themes, Follow-up, or any other section), always format it as `[[Full Name]]`. Never write a person's name as plain text. This allows Obsidian to create the backlink automatically when the person note is added later.
+
 ## Content formatting (non-negotiable)
 
 All list-like sections MUST use Markdown bullet points (`- `). Never write prose paragraphs where a list of facts, topics, or events is expected. This applies to:
@@ -29,3 +33,5 @@ Copy every frontmatter field and every ## section heading verbatim from the temp
 ## Write tool errors are blocking
 
 If a write tool returns "SCHEMA ERRORS", you MUST NOT reply to the user yet. Re-read the template, fix every listed issue, and call the write tool again. Only reply once the tool confirms the note was written without errors.
+
+If fixing requires changing any parameter that affects the filename (person_name, date, or context for conversations; full_name for people), call `trash_obsidian_note` on the path shown in the error message BEFORE writing the corrected version. Never leave orphaned incomplete files in the vault.

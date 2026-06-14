@@ -31,6 +31,14 @@ def _vault() -> Path:
     return Path(config.OBSIDIAN_VAULT_ROOT).expanduser()
 
 
+def _trash(path: str) -> None:
+    """Move a vault-relative path to .trash/, preserving directory structure."""
+    src = _vault() / path
+    dst = _vault() / ".trash" / path
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    src.rename(dst)
+
+
 def _parse_frontmatter(content: str) -> dict[str, str]:
     m = _FRONTMATTER_BLOCK_RE.match(content)
     if not m:
@@ -116,7 +124,11 @@ def _write(path: str, content: str, top_dir: str) -> str:
         f"Written: {path} — SCHEMA ERRORS, note is incomplete.\n"
         f"You MUST fix all of the following before replying to the user:\n{issues}\n"
         f"Required action: call read_obsidian_note(\"{template}\") to re-check the expected "
-        f"structure, correct the note content, and call the write tool again."
+        f"structure, correct the note content, and call the write tool again.\n"
+        f"FILE CLEANUP: if fixing requires changing any parameter that affects the filename "
+        f"(person_name, date, or context for conversations; full_name for people), you MUST "
+        f"call trash_obsidian_note(\"{path}\") BEFORE writing the corrected version — "
+        f"otherwise the broken file will remain as a duplicate."
     )
 
 
@@ -152,11 +164,33 @@ def read_obsidian_note(path: str) -> str:
 
 
 @function_tool
-def write_people_note(full_name: str, content: str) -> str:
+def write_people_note(full_name: str, content: str, previous_name: str = "") -> str:
     """Create or overwrite a person note at People/<full_name>.md.
+    If previous_name is set and differs from full_name, the old People/<previous_name>.md is
+    deleted after writing (use this when correcting a name, e.g. 'Alex' → 'Alex Strong').
     Returns a confirmation and any formatting warnings."""
     path = f"{_PEOPLE_DIR}/{full_name}.md"
-    return _write(path, content, _PEOPLE_DIR)
+    result = _write(path, content, _PEOPLE_DIR)
+    if previous_name and previous_name != full_name:
+        old = f"{_PEOPLE_DIR}/{previous_name}.md"
+        if (_vault() / old).exists():
+            _trash(old)
+            result += f"\nMoved People/{previous_name}.md to .trash/ — update any [[{previous_name}]] wikilinks in conversation notes to [[{full_name}]]."
+    return result
+
+
+@function_tool
+def trash_obsidian_note(path: str) -> str:
+    """Move a note to Obsidian's .trash/ folder (excluded from graph view, recoverable via
+    Obsidian's 'Restore deleted file'). Path is relative to the vault root.
+    Only notes in People/ or Conversations/ can be trashed."""
+    parts = Path(path).parts
+    if not parts or parts[0] not in {_PEOPLE_DIR, _CONVERSATIONS_DIR}:
+        return f"[error: can only trash notes in People/ or Conversations/, got '{path}']"
+    if not (_vault() / path).exists():
+        return f"[note not found: {path}]"
+    _trash(path)
+    return f"Moved to .trash/: {path}"
 
 
 @function_tool

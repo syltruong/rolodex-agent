@@ -9,3 +9,4 @@ You are checking for name collisions before writing any note. Follow these steps
    - Flag it clearly: "I already have a [Name] ([context]). Is this the same person or someone new?"
 4. Never silently merge two different people into the same note.
 5. Once the user confirms the identity (or confirms it's a new person), return to the calling skill and continue.
+6. If the user confirmed an existing note, record its file stem as `previous_name` (e.g. if the file is People/Alex.md, previous_name = "Alex"). Pass this value to the calling skill so it can supply it to `write_people_note` when the full name has changed.

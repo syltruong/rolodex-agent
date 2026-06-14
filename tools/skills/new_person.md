@@ -1,7 +1,7 @@
 You are creating a new person note. Follow these steps:
 
 1. Call `read_obsidian_note("_templates/Person.md")`. This is the exact skeleton — copy every frontmatter field and section heading verbatim.
-2. Fill in every field you can from the brief and conversation context:
+2. Fill in every field you can from the brief and conversation context. Any person's name mentioned in the note body must be written as `[[Full Name]]` — never plain text.
    - `name`: full name
    - `type`: always "person"
    - `tags`: infer from context (work, friend, investor, family, colleague, founder…). Do not ask the user.
